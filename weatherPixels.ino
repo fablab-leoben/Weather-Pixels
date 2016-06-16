@@ -1,5 +1,8 @@
+// This #include statement was automatically added by the Particle IDE.
+#include "neopixel/neopixel.h"
 
-#include <ESP8266WiFi.h>
+TCPClient client;
+
 void animSetup(void);
 void animConfig(uint16_t, uint8_t, uint8_t, uint8_t, uint8_t, uint8_t);
 void waitForFrame(void);
@@ -7,10 +10,7 @@ void renderFrame(void);
 
 
 
-const char* ssid     = "adafruit";
-const char* password = "ffffffff";
-int8_t utc_offset = -5; // hours off of UTC, e.g. EST is -5 
-const char* location = "boston%2C%20ma";
+const char* location = "leoben%2C%20stm";
 
 const char* path_prefix = "/v1/public/yql?q=select%20item.condition.code%2C%20item.condition.text%20%20from%20weather.forecast%20where%20woeid%20in%20(select%20woeid%20from%20geo.places(1)%20where%20text%3D%22";
 const char* path_postfix = "%22)&format=json&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys";
@@ -25,27 +25,11 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  // We start by connecting to a WiFi network
-
-  Serial.println();
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-  
-  WiFi.begin(ssid, password);
-  
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi connected");  
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP());
-
   animConfig(0, 0, 0, 0, 0, 0);
   animSetup();
+  
+  Time.zone(1);
+
 }
 
 uint32_t timekeep=0xFFFF;
@@ -69,7 +53,6 @@ void updateWeather() {
   Serial.print("Connecting to "); Serial.println(host);
   
   // Use WiFiClient class to create TCP connections
-  WiFiClient client;
   if (!client.connect(host, httpPort)) {
     Serial.println("Connection failed");
     return;
@@ -96,24 +79,15 @@ void updateWeather() {
     Serial.println(line);
     weathercode = (line.substring(i+8)).toInt();
 
-    // extract hour and minute
-    i = line.indexOf(String("\"created\":"));
-    if (i < 0) continue;
-    createhour = (line.substring(i+22)).toInt();
-    createmin = (line.substring(i+25)).toInt();
   }
   
   Serial.println("Closing connection");
 
-  // convert from UTC to local
-  createhour += 24;
-  createhour += utc_offset;
-  createhour %= 24;
   Serial.print("\nWeather code: "); Serial.print(weathercode);
   Serial.print(" @ "); Serial.print(createhour); Serial.print(":"); Serial.println(createmin);
 
   // Get the current time of day, between 0 and 65535
-  uint16_t timeofday = map((createhour * 60) + createmin, 0, 1440, 0, 65535);
+  uint16_t timeofday = map((Time.hour() * 60) + Time.minute(), 0, 1440, 0, 65535);
 
   Serial.print("Time of day = "); Serial.print(timeofday); Serial.println("/65535");
   
@@ -303,10 +277,4 @@ void updateWeather() {
     default:
       break;
   }
-/*
-
-25  cold
-36  hot
-3200  not available
-*/
 }
